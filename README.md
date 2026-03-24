@@ -83,7 +83,7 @@ Abre una terminal (puedes buscar "Terminal" en el menú de aplicaciones) y ejecu
 
 ```bash
 # Descargar el script de instalación
-curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/main/scripts/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh -o install.sh
 ```
 
 > 💡 **¿Qué hace este comando?** Descarga un archivo llamado `install.sh` que contiene las instrucciones de instalación.
@@ -114,7 +114,7 @@ sudo apt update
 sudo apt install curl libgtk-4-1 libwebkit2gtk-4.1-0
 
 # Descargar e instalar
-curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
 ```
 
 #### Fedora
@@ -124,7 +124,7 @@ curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/mai
 sudo dnf install curl gtk4 webkit2gtk4.1
 
 # Descargar e instalar
-curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
 ```
 
 #### Arch Linux / Manjaro
@@ -135,7 +135,7 @@ yay -S pwasforalllinux
 
 # O manualmente
 sudo pacman -S curl gtk4 webkit2gtk-4.1
-curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
 ```
 
 #### openSUSE
@@ -145,14 +145,14 @@ curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/mai
 sudo zypper install curl gtk4 libwebkit2gtk3
 
 # Descargar e instalar
-curl -fsSL https://raw.githubusercontent.com/pwasforalllinux/pwasforalllinux/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
 ```
 
 ---
 
 ### 📥 Descarga Directa
 
-Si prefieres no usar la terminal, puedes descargar los paquetes directamente desde la [página de Releases](https://github.com/pwasforalllinux/pwasforalllinux/releases):
+Si prefieres no usar la terminal, puedes descargar los paquetes directamente desde la [página de Releases](https://github.com/alebcasas/PWAsForAllLinux/releases):
 
 | Formato | Distribución | Descripción |
 |---------|-------------|-------------|
@@ -163,7 +163,7 @@ Si prefieres no usar la terminal, puedes descargar los paquetes directamente des
 
 #### Cómo instalar el paquete DEB
 
-1. Descarga el archivo `.deb` desde [Releases](https://github.com/pwasforalllinux/pwasforalllinux/releases)
+1. Descarga el archivo `.deb` desde [Releases](https://github.com/alebcasas/PWAsForAllLinux/releases)
 2. Haz doble clic en el archivo
 3. Se abrirá el centro de software
 4. Haz clic en "Instalar"
@@ -177,7 +177,7 @@ sudo apt install -f  # Instala dependencias si faltan
 
 #### Cómo usar el AppImage
 
-1. Descarga el archivo `.AppImage` desde [Releases](https://github.com/pwasforalllinux/pwasforalllinux/releases)
+1. Descarga el archivo `.AppImage` desde [Releases](https://github.com/alebcasas/PWAsForAllLinux/releases)
 2. Haz clic derecho → Propiedades → Permisos → Marcar "Permitir ejecutar como programa"
 3. Haz doble clic para ejecutar
 
@@ -393,8 +393,8 @@ Si prefieres compilar la aplicación tú mismo:
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/pwasforalllinux/pwasforalllinux.git
-cd pwasforalllinux
+git clone https://github.com/alebcasas/PWAsForAllLinux.git
+cd PWAsForAllLinux
 
 # 2. Instalar Rust (si no está instalado)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -424,11 +424,11 @@ sudo ./scripts/install.sh --build
 
 ### Reportar Problemas
 
-¿Encontraste un error? [Abre un issue](https://github.com/pwasforalllinux/pwasforalllinux/issues)
+¿Encontraste un error? [Abre un issue](https://github.com/alebcasas/PWAsForAllLinux/issues)
 
 ### Sugerir Funcionalidades
 
-¿Tienes una idea genial? [Compártela](https://github.com/pwasforalllinux/pwasforalllinux/issues/new?labels=enhancement)
+¿Tienes una idea genial? [Compártela](https://github.com/alebcasas/PWAsForAllLinux/issues/new?labels=enhancement)
 
 ### Contribuir Código
 
@@ -463,7 +463,7 @@ Ver el archivo [LICENSE](LICENSE) para más detalles.
 - [GTK Project](https://gtk.org/) - Framework de interfaz gráfica
 - [WebKitGTK](https://webkitgtk.org/) - Motor de renderizado web
 - [Rust](https://rust-lang.org/) - Lenguaje de programación
-- Todos los [contribuidores](https://github.com/pwasforalllinux/pwasforalllinux/graphs/contributors)
+- Todos los [contribuidores](https://github.com/alebcasas/PWAsForAllLinux/graphs/contributors)
 
 ---
 
@@ -472,7 +472,7 @@ Ver el archivo [LICENSE](LICENSE) para más detalles.
 </p>
 
 <p align="center">
-  <a href="https://github.com/pwasforalllinux/pwasforalllinux">GitHub</a> •
-  <a href="https://github.com/pwasforalllinux/pwasforalllinux/wiki">Documentación</a> •
-  <a href="https://github.com/pwasforalllinux/pwasforalllinux/releases">Descargas</a>
+  <a href="https://github.com/alebcasas/PWAsForAllLinux">GitHub</a> •
+  <a href="https://github.com/alebcasas/PWAsForAllLinux/wiki">Documentación</a> •
+  <a href="https://github.com/alebcasas/PWAsForAllLinux/releases">Descargas</a>
 </p>
