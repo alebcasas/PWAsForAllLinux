@@ -471,6 +471,8 @@ Ver el archivo [LICENSE](LICENSE) para más detalles.
   <strong>Hecho con ❤️ para la comunidad Linux</strong>
 </p>
 
+<!-- Updated: Links corrected to alebcasas/PWAsForAllLinux -->
+
 <p align="center">
   <a href="https://github.com/alebcasas/PWAsForAllLinux">GitHub</a> •
   <a href="https://github.com/alebcasas/PWAsForAllLinux/wiki">Documentación</a> •
