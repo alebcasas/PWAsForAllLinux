@@ -1,0 +1,47 @@
+[package]
+name = "pwasforalllinux"
+version = "1.0.0"
+edition = "2021"
+authors = ["PWAsForAllLinux Team"]
+description = "A tool to install, manage and use Progressive Web Apps (PWAs) on Linux"
+license = "MIT"
+repository = "https://github.com/pwasforalllinux/pwasforalllinux"
+keywords = ["pwa", "webapp", "linux", "gtk", "webkit"]
+categories = ["gui", "web-programming"]
+
+[dependencies]
+gtk4 = "0.9"
+webkit2gtk = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+dirs = "5.0"
+sha2 = "0.10"
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+futures = "0.3"
+regex = "1.10"
+url = "2.5"
+open = "5.0"
+
+[build-dependencies]
+glib-build-tools = "0.19"
+
+[[bin]]
+name = "pwasforalllinux"
+path = "src/main.rs"
+
+[[bin]]
+name = "pwa-launcher"
+path = "src/launcher.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

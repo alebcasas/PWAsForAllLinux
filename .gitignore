@@ -1,0 +1,42 @@
+# Compiled files
+/target/
+*.o
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build artifacts
+/build/
+/dist/
+*.deb
+*.rpm
+*.AppImage
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Rust
+**/*.rs.bk
+Cargo.lock
+
+# Logs
+*.log
+
+# Test
+/coverage/
+
+# Package builds
+/packages/
