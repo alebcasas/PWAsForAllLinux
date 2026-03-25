@@ -452,12 +452,11 @@ main() {
         install)
             check_requirements
             
-            if [ "$build_from_src" = true ]; then
+            # Always install build dependencies before attempting to compile
+            if [ "$build_from_src" = true ] || ! download_binaries; then
+                print_step "Installing build dependencies..."
+                install_dependencies
                 build_from_source
-            else
-                if ! download_binaries; then
-                    build_from_source
-                fi
             fi
             
             install_application
