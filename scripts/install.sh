@@ -162,6 +162,12 @@ install_dependencies() {
                 librsvg2-dev \
                 git \
                 "${extra_packages[@]}" 2>/dev/null || true
+            
+            # Verify pkg-config is installed
+            if ! command -v pkg-config &> /dev/null; then
+                print_warning "pkg-config not found, installing explicitly..."
+                apt-get install -y -qq pkg-config
+            fi
             ;;
         fedora|rhel|centos)
             dnf install -y -q \
