@@ -5,8 +5,7 @@ use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
 use std::env;
-use webkit2gtk as webkit;
-use webkit::prelude::*;
+use webkit2gtk::{self as webkit, WebViewExt, WebContext};
 
 mod config;
 mod pwa;

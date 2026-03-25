@@ -11,7 +11,7 @@ mod utils;
 use anyhow::Result;
 use gtk4::prelude::*;
 use gtk4::Application;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::EnvFilter;
 
 const APP_ID: &str = "com.pwasforalllinux.PWAsForAllLinux";
 

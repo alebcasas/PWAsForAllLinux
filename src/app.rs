@@ -5,16 +5,16 @@ use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk::{
     Application, ApplicationWindow, Box, Button, Entry, HeaderBar, Label, ListBox,
-    ListBoxRow, Orientation, ScrolledWindow, Separator, Spinner, Stack, StackSidebar,
-    Image, Picture, Dialog, DialogExt, MessageDialog, MessageType, ButtonsType,
+    ListBoxRow, Orientation, ScrolledWindow, Separator, Stack, StackSidebar,
+    Image, MessageDialog, MessageType, ButtonsType,
     Grid, ComboBoxText, SpinButton, Switch, Adjustment,
 };
 use gtk::gdk::Texture;
 use gtk::gio::File as GioFile;
-use std::sync::{Arc, Mutex};
 
 use crate::config::Config;
 use crate::pwa::{Pwa, PwaManager};
+use crate::utils;
 
 /// Build the main UI
 pub fn build_ui(app: &Application) -> Result<()> {
