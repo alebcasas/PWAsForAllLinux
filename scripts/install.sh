@@ -222,7 +222,7 @@ install_dependencies() {
 download_binaries() {
     print_step "Downloading PWAsForAllLinux..."
     
-    local download_url="https://github.com/pwasforalllinux/pwasforalllinux/releases/download/v${VERSION}/pwasforalllinux-${ARCH}.tar.gz"
+    local download_url="https://github.com/alebcasas/PWAsForAllLinux/releases/download/v${VERSION}/pwasforalllinux-${ARCH}.tar.gz"
     
     # Try to download pre-built binaries
     if curl -fsSL "$download_url" -o "$TEMP_DIR/pwasforalllinux.tar.gz" 2>/dev/null; then
@@ -239,8 +239,22 @@ download_binaries() {
 build_from_source() {
     print_step "Building PWAsForAllLinux from source..."
     
+    # Ensure Rust is installed and in PATH
+    if ! command -v cargo &> /dev/null; then
+        print_error "Cargo not found. Installing Rust..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        export PATH="$HOME/.cargo/bin:/root/.cargo/bin:$PATH"
+        source "$HOME/.cargo/env" 2>/dev/null || source "/root/.cargo/env" 2>/dev/null || true
+        
+        # Verify installation
+        if ! command -v cargo &> /dev/null; then
+            print_error "Failed to install Rust. Please install manually: https://rustup.rs"
+            exit 1
+        fi
+    fi
+    
     # Clone repository
-    git clone --depth 1 https://github.com/pwasforalllinux/pwasforalllinux.git "$TEMP_DIR/src" 2>/dev/null || {
+    git clone --depth 1 https://github.com/alebcasas/PWAsForAllLinux.git "$TEMP_DIR/src" 2>/dev/null || {
         # If git fails, use local source
         cp -r "$(dirname "$0")/.." "$TEMP_DIR/src" 2>/dev/null || {
             print_error "Could not find source code"
