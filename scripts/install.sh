@@ -160,6 +160,7 @@ install_dependencies() {
                 libwebkit2gtk-4.1-dev \
                 libssl-dev \
                 librsvg2-dev \
+                git \
                 "${extra_packages[@]}" 2>/dev/null || true
             ;;
         fedora|rhel|centos)
