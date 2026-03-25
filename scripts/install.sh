@@ -253,16 +253,29 @@ build_from_source() {
         fi
     fi
     
-    # Clone repository
-    git clone --depth 1 https://github.com/alebcasas/PWAsForAllLinux.git "$TEMP_DIR/src" 2>/dev/null || {
-        # If git fails, use local source
-        cp -r "$(dirname "$0")/.." "$TEMP_DIR/src" 2>/dev/null || {
+    # Try to clone repository, fall back to local source if it fails
+    if ! git clone --depth 1 https://github.com/alebcasas/PWAsForAllLinux.git "$TEMP_DIR/src" 2>/dev/null; then
+        print_warning "Could not clone repository. Using local source..."
+        # Use local source (script is in scripts/ directory, source is in parent)
+        local script_dir="$(cd "$(dirname "$0")" && pwd)"
+        local source_dir="$(dirname "$script_dir")"
+        
+        if [ -f "$source_dir/Cargo.toml" ]; then
+            cp -r "$source_dir" "$TEMP_DIR/src"
+        else
             print_error "Could not find source code"
+            print_error "Please ensure you have internet connection or run from the repository directory"
             exit 1
-        }
-    }
+        fi
+    fi
     
     cd "$TEMP_DIR/src"
+    
+    # Verify Cargo.toml exists
+    if [ ! -f "Cargo.toml" ]; then
+        print_error "Cargo.toml not found in source directory"
+        exit 1
+    fi
     
     # Build release
     cargo build --release
