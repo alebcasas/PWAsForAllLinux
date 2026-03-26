@@ -12,7 +12,7 @@ use gtk::{
 use gtk::gdk::Texture;
 use gtk::gio::File as GioFile;
 
-use crate::config::Config;
+use crate::config;
 use crate::pwa::{Pwa, PwaManager};
 use crate::utils;
 
@@ -390,7 +390,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     form.set_margin_top(12);
 
     // Load config
-    let config = Config::load().unwrap_or_default();
+    let config = config::load_config().unwrap_or_default();
 
     // Default engine
     let engine_label = Label::new(Some("Browser Engine:"));
