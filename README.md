@@ -323,8 +323,8 @@ Si prefieres compilar la aplicación tú mismo:
 ### Requisitos
 
 - **Rust** 1.70 o superior
-- **GTK4** development libraries
-- **WebKitGTK** 4.1 development libraries
+- **GTK4** development libraries (versión 4.8+)
+- **WebKitGTK 6.0** development libraries
 
 ### Pasos
 
@@ -338,13 +338,13 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # 3. Instalar dependencias según tu distribución
 # Ubuntu/Debian:
-sudo apt install build-essential libgtk-4-dev libwebkit2gtk-4.1-dev
+sudo apt install build-essential libgtk-4-dev libwebkitgtk-6.0-dev
 
 # Fedora:
-sudo dnf install @development-tools gtk4-devel webkit2gtk4.1-devel
+sudo dnf install @development-tools gtk4-devel webkitgtk6.0-devel
 
 # Arch Linux:
-sudo pacman -S base-devel gtk4 webkit2gtk-4.1
+sudo pacman -S base-devel gtk4 webkitgtk-6.0
 
 # 4. Compilar
 cargo build --release
@@ -352,6 +352,15 @@ cargo build --release
 # 5. Instalar
 sudo ./scripts/install.sh --build
 ```
+
+### Notas Técnicas
+
+Este proyecto utiliza:
+- **GTK4** (versión 0.8) para la interfaz gráfica
+- **WebKit6** (versión 0.3) para el renderizado web
+- **glib/gio** (versión 0.18) para funcionalidades del sistema
+
+La migración de WebKit2GTK (GTK3) a WebKit6 (GTK4) garantiza compatibilidad total con las últimas versiones de GTK y mejor rendimiento.
 
 ---
 
