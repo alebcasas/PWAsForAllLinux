@@ -13,7 +13,7 @@ use gtk::gdk::Texture;
 use gtk::gio::File as GioFile;
 
 use crate::config;
-use crate::pwa::{Pwa, PwaManager};
+use crate::pwa::{self, Pwa, PwaManager};
 use crate::utils;
 
 /// Build the main UI
@@ -346,11 +346,105 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
     btn_box.set_margin_top(12);
 
     let auto_detect_btn = Button::with_label("Auto-detect from URL");
+    let url_entry_clone = url_entry.clone();
+    let name_entry_clone = name_entry.clone();
+    let width_spin_clone = width_spin.clone();
+    let height_spin_clone = height_spin.clone();
+    let display_combo_clone = display_combo.clone();
+    
+    auto_detect_btn.connect_clicked(move |_| {
+        let url = url_entry_clone.text().to_string();
+        if url.is_empty() {
+            utils::show_error_dialog(None, "Please enter a URL first");
+            return;
+        }
+        
+        // Try to fetch manifest
+        let url_clone = url.clone();
+        let name_entry_clone2 = name_entry_clone.clone();
+        let width_spin_clone2 = width_spin_clone.clone();
+        let height_spin_clone2 = height_spin_clone.clone();
+        let display_combo_clone2 = display_combo_clone.clone();
+        
+        glib::MainContext::default().spawn_local(async move {
+            match pwa::fetch_manifest(&url_clone).await {
+                Ok(manifest) => {
+                    // Update form with manifest data
+                    if let Some(name) = manifest.name {
+                        name_entry_clone2.set_text(&name);
+                    }
+                    if let Some(display) = manifest.display {
+                        match display.as_str() {
+                            "standalone" => { display_combo_clone2.set_active_id(Some("standalone")); }
+                            "fullscreen" => { display_combo_clone2.set_active_id(Some("fullscreen")); }
+                            "minimal-ui" => { display_combo_clone2.set_active_id(Some("minimal-ui")); }
+                            _ => {}
+                        }
+                    }
+                    tracing::info!("Manifest fetched successfully");
+                }
+                Err(e) => {
+                    tracing::error!("Failed to fetch manifest: {}", e);
+                    utils::show_error_dialog(None, &format!("Failed to fetch manifest: {}", e));
+                }
+            }
+        });
+    });
     btn_box.append(&auto_detect_btn);
 
     let install_btn = Button::with_label("Install PWA");
     install_btn.add_css_class("suggested-action");
     install_btn.add_css_class("pill");
+    
+    let url_entry_clone2 = url_entry.clone();
+    let name_entry_clone3 = name_entry.clone();
+    let width_spin_clone3 = width_spin.clone();
+    let height_spin_clone3 = height_spin.clone();
+    let display_combo_clone3 = display_combo.clone();
+    
+    install_btn.connect_clicked(move |_| {
+        let url = url_entry_clone2.text().to_string();
+        let name = name_entry_clone3.text().to_string();
+        
+        if url.is_empty() {
+            utils::show_error_dialog(None, "Please enter a URL");
+            return;
+        }
+        
+        if name.is_empty() {
+            utils::show_error_dialog(None, "Please enter a name for the PWA");
+            return;
+        }
+        
+        let width = width_spin_clone3.value() as i32;
+        let height = height_spin_clone3.value() as i32;
+        let display_mode = display_combo_clone3.active_id()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "standalone".to_string());
+        
+        // Create PWA
+        let mut pwa = pwa::Pwa::new(name, url);
+        pwa.width = width;
+        pwa.height = height;
+        pwa.display_mode = display_mode;
+        
+        // Add PWA
+        match pwa::PwaManager::new() {
+            Ok(mut manager) => {
+                if let Err(e) = manager.add(pwa) {
+                    tracing::error!("Failed to add PWA: {}", e);
+                    utils::show_error_dialog(None, &format!("Failed to add PWA: {}", e));
+                } else {
+                    tracing::info!("PWA added successfully");
+                    utils::show_info_dialog(None, "Success", "PWA installed successfully!");
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to load PWA manager: {}", e);
+                utils::show_error_dialog(None, &format!("Failed to load PWA manager: {}", e));
+            }
+        }
+    });
     btn_box.append(&install_btn);
 
     container.append(&btn_box);
@@ -392,47 +486,58 @@ fn create_settings_page() -> Result<gtk::Box> {
     // Load config
     let config = config::load_config().unwrap_or_default();
 
+    // Language
+    let lang_label = Label::new(Some("Language:"));
+    lang_label.set_halign(gtk::Align::Start);
+    form.attach(&lang_label, 0, 0, 1, 1);
+
+    let lang_combo = ComboBoxText::new();
+    lang_combo.append(Some("en"), "English");
+    lang_combo.append(Some("es"), "Español");
+    lang_combo.set_active_id(Some(&config.language));
+    form.attach(&lang_combo, 1, 0, 2, 1);
+
     // Default engine
     let engine_label = Label::new(Some("Browser Engine:"));
     engine_label.set_halign(gtk::Align::Start);
-    form.attach(&engine_label, 0, 0, 1, 1);
+    form.attach(&engine_label, 0, 1, 1, 1);
 
     let engine_combo = ComboBoxText::new();
     engine_combo.append(Some("webkit"), "WebKitGTK (Default)");
     engine_combo.append(Some("firefox"), "Firefox");
     engine_combo.append(Some("chromium"), "Chromium");
     engine_combo.set_active_id(Some(&config.default_engine));
-    form.attach(&engine_combo, 1, 0, 2, 1);
+    form.attach(&engine_combo, 1, 1, 2, 1);
 
     // Hardware acceleration
     let hw_accel_label = Label::new(Some("Hardware Acceleration:"));
     hw_accel_label.set_halign(gtk::Align::Start);
-    form.attach(&hw_accel_label, 0, 1, 1, 1);
+    form.attach(&hw_accel_label, 0, 2, 1, 1);
 
     let hw_accel_switch = Switch::new();
     hw_accel_switch.set_active(config.hardware_acceleration);
-    form.attach(&hw_accel_switch, 1, 1, 1, 1);
+    form.attach(&hw_accel_switch, 1, 2, 1, 1);
 
     // Notifications
     let notif_label = Label::new(Some("Enable Notifications:"));
     notif_label.set_halign(gtk::Align::Start);
-    form.attach(&notif_label, 0, 2, 1, 1);
+    form.attach(&notif_label, 0, 3, 1, 1);
 
     let notif_switch = Switch::new();
     notif_switch.set_active(config.enable_notifications);
-    form.attach(&notif_switch, 1, 2, 1, 1);
+    form.attach(&notif_switch, 1, 3, 1, 1);
 
     // Theme
     let theme_label = Label::new(Some("Theme:"));
     theme_label.set_halign(gtk::Align::Start);
-    form.attach(&theme_label, 0, 3, 1, 1);
+    form.attach(&theme_label, 0, 4, 1, 1);
 
     let theme_combo = ComboBoxText::new();
     theme_combo.append(Some("system"), "System Default");
     theme_combo.append(Some("light"), "Light");
     theme_combo.append(Some("dark"), "Dark");
     theme_combo.set_active_id(Some(&config.theme));
-    form.attach(&theme_combo, 1, 3, 2, 1);
+    form.attach(&theme_combo, 1, 4, 2, 1);
 
     container.append(&form);
 
@@ -443,6 +548,39 @@ fn create_settings_page() -> Result<gtk::Box> {
     let save_btn = Button::with_label("Save Settings");
     save_btn.add_css_class("suggested-action");
     save_btn.set_halign(gtk::Align::End);
+    
+    // Connect save button
+    let lang_combo_clone = lang_combo.clone();
+    let engine_combo_clone = engine_combo.clone();
+    let hw_accel_switch_clone = hw_accel_switch.clone();
+    let notif_switch_clone = notif_switch.clone();
+    let theme_combo_clone = theme_combo.clone();
+    
+    save_btn.connect_clicked(move |_| {
+        let mut config = config::load_config().unwrap_or_default();
+        
+        // Update config from UI
+        if let Some(lang) = lang_combo_clone.active_id() {
+            config.language = lang.to_string();
+        }
+        if let Some(engine) = engine_combo_clone.active_id() {
+            config.default_engine = engine.to_string();
+        }
+        config.hardware_acceleration = hw_accel_switch_clone.is_active();
+        config.enable_notifications = notif_switch_clone.is_active();
+        if let Some(theme) = theme_combo_clone.active_id() {
+            config.theme = theme.to_string();
+        }
+        
+        // Save config
+        if let Err(e) = config::save_config(&config) {
+            tracing::error!("Failed to save config: {}", e);
+            utils::show_error_dialog(None, &format!("Failed to save settings: {}", e));
+        } else {
+            tracing::info!("Settings saved successfully");
+        }
+    });
+    
     container.append(&save_btn);
 
     Ok(container)

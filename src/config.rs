@@ -22,6 +22,8 @@ pub struct Config {
     pub custom_user_agent: String,
     /// Theme (system, light, dark)
     pub theme: String,
+    /// Language (en, es)
+    pub language: String,
 }
 
 impl Default for Config {
@@ -34,6 +36,7 @@ impl Default for Config {
             enable_notifications: true,
             custom_user_agent: String::new(),
             theme: "system".to_string(),
+            language: "en".to_string(),
         }
     }
 }
