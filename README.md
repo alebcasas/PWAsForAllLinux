@@ -51,135 +51,72 @@ Una **Progressive Web App** es un sitio web que se comporta como una aplicación
 
 ## 📦 Instalación
 
-### Requisitos del Sistema
+### ✅ Requisitos
 
-| Requisito | Mínimo | Recomendado |
-|-----------|--------|-------------|
-| Sistema Operativo | Cualquier Linux de 64 bits | Ubuntu 22.04+, Fedora 38+, Arch Linux |
-| Arquitectura | x86_64 o ARM64 | x86_64 |
-| RAM | 2 GB | 4 GB |
-| Espacio en disco | 100 MB | 500 MB |
-
-### Entornos de Escritorio Compatibles
-
-PWAsForAllLinux funciona con **todos** los entornos de escritorio populares:
-
-- 🐧 **GNOME** (Ubuntu, Fedora, Debian)
-- 🐧 **KDE Plasma** (Kubuntu, openSUSE, Manjaro KDE)
-- 🐧 **XFCE** (Xubuntu, Linux Mint XFCE)
-- 🐧 **MATE** (Ubuntu MATE, Linux Mint MATE)
-- 🐧 **Cinnamon** (Linux Mint)
-- 🐧 **LXQt** (Lubuntu)
-- 🐧 **Budgie** (Ubuntu Budgie)
-- 🐧 **i3/Sway** (Tiling window managers)
+| Requisito | Detalle |
+|-----------|---------|
+| **Sistema Operativo** | Cualquier distribución Linux de 64 bits |
+| **Arquitectura** | x86_64 o ARM64 |
+| **RAM** | Mínimo 2 GB (recomendado 4 GB) |
+| **Espacio en disco** | Mínimo 100 MB |
+| **Entorno de escritorio** | GNOME, KDE, XFCE, MATE, Cinnamon, LXQt, Budgie, i3, Sway, o cualquier otro |
 
 ---
 
-### 🚀 Instalación Rápida (Recomendada)
+### 🚀 Instalación (3 Pasos Simples)
 
-#### Paso 1: Descargar el instalador
+#### Paso 1: Abrir Terminal
 
-Abre una terminal (puedes buscar "Terminal" en el menú de aplicaciones) y ejecuta:
+Abre una terminal en tu sistema:
+- **GNOME/KDE/XFCE:** Presiona `Ctrl + Alt + T`
+- **O busca:** "Terminal" en el menú de aplicaciones
+
+#### Paso 2: Descargar el Instalador
+
+Copia y pega este comando en la terminal:
 
 ```bash
-# Descargar el script de instalación
 curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh -o install.sh
 ```
 
-> 💡 **¿Qué hace este comando?** Descarga un archivo llamado `install.sh` que contiene las instrucciones de instalación.
+> 💡 Este comando descarga el archivo de instalación automáticamente.
 
-#### Paso 2: Ejecutar el instalador
+#### Paso 3: Ejecutar la Instalación
+
+Ejecuta estos dos comandos:
 
 ```bash
-# Dar permisos de ejecución y ejecutar
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-> ⚠️ **Nota:** Se te pedirá tu contraseña de administrador (sudo). Esto es necesario para instalar la aplicación en todo el sistema.
+> ⚠️ Se te pedirá tu contraseña de administrador. Es normal y necesario para instalar la aplicación.
 
-#### Paso 3: ¡Listo!
+#### ✅ ¡Listo!
 
-Una vez completada la instalación, podrás encontrar **PWAsForAllLinux** en el menú de aplicaciones de tu sistema.
-
----
-
-### 📋 Instalación por Distribución
-
-#### Ubuntu / Debian / Linux Mint
-
-```bash
-# Instalar dependencias
-sudo apt update
-sudo apt install curl libgtk-4-1 libwebkit2gtk-4.1-0
-
-# Descargar e instalar
-curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
-```
-
-#### Fedora
-
-```bash
-# Instalar dependencias
-sudo dnf install curl gtk4 webkit2gtk4.1
-
-# Descargar e instalar
-curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
-```
-
-#### Arch Linux / Manjaro
-
-```bash
-# Instalar desde AUR (recomendado)
-yay -S pwasforalllinux
-
-# O manualmente
-sudo pacman -S curl gtk4 webkit2gtk-4.1
-curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
-```
-
-#### openSUSE
-
-```bash
-# Instalar dependencias
-sudo zypper install curl gtk4 libwebkit2gtk3
-
-# Descargar e instalar
-curl -fsSL https://raw.githubusercontent.com/alebcasas/PWAsForAllLinux/main/scripts/install.sh | sudo bash
-```
+**PWAsForAllLinux** ya está instalado. Búscalo en el menú de aplicaciones de tu sistema.
 
 ---
 
-### 📥 Descarga Directa
+### 🔄 Actualizar
 
-Si prefieres no usar la terminal, puedes descargar los paquetes directamente desde la [página de Releases](https://github.com/alebcasas/PWAsForAllLinux/releases):
-
-| Formato | Distribución | Descripción |
-|---------|-------------|-------------|
-| `.deb` | Ubuntu, Debian, Linux Mint | Paquete DEB (~15 MB) |
-| `.rpm` | Fedora, openSUSE, RHEL | Paquete RPM (~15 MB) |
-| `.AppImage` | Cualquier distribución | AppImage universal (~25 MB) |
-| `.tar.gz` | Cualquier distribución | Binarios comprimidos |
-
-#### Cómo instalar el paquete DEB
-
-1. Descarga el archivo `.deb` desde [Releases](https://github.com/alebcasas/PWAsForAllLinux/releases)
-2. Haz doble clic en el archivo
-3. Se abrirá el centro de software
-4. Haz clic en "Instalar"
-
-O desde la terminal:
+Para actualizar a una nueva versión, simplemente ejecuta el instalador de nuevo:
 
 ```bash
-sudo dpkg -i pwasforalllinux_*.deb
-sudo apt install -f  # Instala dependencias si faltan
+sudo ./install.sh
 ```
 
-#### Cómo usar el AppImage
+> 💡 Tus PWAs instaladas se conservarán automáticamente.
 
-1. Descarga el archivo `.AppImage` desde [Releases](https://github.com/alebcasas/PWAsForAllLinux/releases)
-2. Haz clic derecho → Propiedades → Permisos → Marcar "Permitir ejecutar como programa"
-3. Haz doble clic para ejecutar
+---
+
+### 🗑️ Desinstalar
+
+Para eliminar PWAsForAllLinux de tu sistema:
+
+```bash
+sudo ./install.sh --uninstall
+```
 
 ---
 
