@@ -11,6 +11,8 @@ use gtk::{
 };
 use gtk::gdk::Texture;
 use gtk::gio::File as GioFile;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::config;
 use crate::i18n::t;
@@ -44,12 +46,16 @@ pub fn build_ui(app: &Application) -> Result<()> {
     sidebar.set_stack(&stack);
     sidebar.set_width_request(200);
 
+    // Create shared PWA list for dynamic updates
+    let pwa_list_box = Rc::new(RefCell::new(ListBox::new()));
+    pwa_list_box.borrow().add_css_class("boxed-list");
+
     // PWAs page
-    let pwas_page = create_pwas_page()?;
+    let pwas_page = create_pwas_page_with_list(pwa_list_box.clone())?;
     stack.add_titled(&pwas_page, Some("pwas"), &t("my_pwas"));
 
     // Add PWA page
-    let add_page = create_add_pwa_page()?;
+    let add_page = create_add_pwa_page(pwa_list_box.clone())?;
     stack.add_titled(&add_page, Some("add"), &t("add_pwa"));
 
     // Settings page
@@ -70,8 +76,8 @@ pub fn build_ui(app: &Application) -> Result<()> {
     Ok(())
 }
 
-/// Create PWAs list page
-fn create_pwas_page() -> Result<gtk::Box> {
+/// Create PWAs list page with shared list box
+fn create_pwas_page_with_list(pwa_list_box: Rc<RefCell<ListBox>>) -> Result<gtk::Box> {
     let container = Box::new(Orientation::Vertical, 12);
     container.set_margin_top(12);
     container.set_margin_bottom(12);
@@ -87,6 +93,10 @@ fn create_pwas_page() -> Result<gtk::Box> {
     // Refresh button
     let refresh_btn = Button::from_icon_name("view-refresh-symbolic");
     refresh_btn.set_tooltip_text(Some(&t("refresh_list")));
+    let pwa_list_box_clone = pwa_list_box.clone();
+    refresh_btn.connect_clicked(move |_| {
+        update_pwa_list(&pwa_list_box_clone);
+    });
     header_box.append(&refresh_btn);
 
     container.append(&header_box);
@@ -96,32 +106,57 @@ fn create_pwas_page() -> Result<gtk::Box> {
     scrolled.set_vexpand(true);
     scrolled.set_min_content_height(300);
 
-    let list_box = ListBox::new();
-    list_box.add_css_class("boxed-list");
+    // Load initial PWAs
+    update_pwa_list(&pwa_list_box);
 
-    // Load PWAs
-    let pwa_manager = PwaManager::new()?;
-    let pwas = pwa_manager.get_all();
-
-    if pwas.is_empty() {
-        let empty_label = Label::new(Some(&t("no_pwas_installed")));
-        empty_label.add_css_class("dim-label");
-        list_box.append(&empty_label);
-    } else {
-        for pwa in pwas {
-            let row = create_pwa_row(pwa)?;
-            list_box.append(&row);
-        }
-    }
-
-    scrolled.set_child(Some(&list_box));
+    // Get the list box widget
+    let list_box_widget = pwa_list_box.borrow().clone();
+    scrolled.set_child(Some(&list_box_widget));
     container.append(&scrolled);
 
     Ok(container)
 }
 
+/// Update the PWA list
+fn update_pwa_list(pwa_list_box: &Rc<RefCell<ListBox>>) {
+    let list_box = pwa_list_box.borrow();
+    
+    // Clear existing items
+    while let Some(child) = list_box.first_child() {
+        list_box.remove(&child);
+    }
+
+    // Load PWAs
+    match PwaManager::new() {
+        Ok(pwa_manager) => {
+            let pwas = pwa_manager.get_all();
+
+            if pwas.is_empty() {
+                let empty_label = Label::new(Some(&t("no_pwas_installed")));
+                empty_label.add_css_class("dim-label");
+                list_box.append(&empty_label);
+            } else {
+                for pwa in pwas {
+                    match create_pwa_row(&pwa, pwa_list_box.clone()) {
+                        Ok(row) => list_box.append(&row),
+                        Err(e) => {
+                            tracing::error!("Failed to create PWA row: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to load PWA manager: {}", e);
+            let error_label = Label::new(Some(&format!("Error loading PWAs: {}", e)));
+            error_label.add_css_class("dim-label");
+            list_box.append(&error_label);
+        }
+    }
+}
+
 /// Create a PWA list row
-fn create_pwa_row(pwa: &Pwa) -> Result<ListBoxRow> {
+fn create_pwa_row(pwa: &Pwa, pwa_list_box: Rc<RefCell<ListBox>>) -> Result<ListBoxRow> {
     let row = ListBoxRow::new();
     row.set_activatable(true);
 
@@ -192,8 +227,9 @@ fn create_pwa_row(pwa: &Pwa) -> Result<ListBoxRow> {
     delete_btn.add_css_class("destructive-action");
     delete_btn.set_tooltip_text(Some(&t("delete_pwa")));
     let pwa_id_delete = pwa.id.clone();
+    let pwa_list_box_clone = pwa_list_box.clone();
     delete_btn.connect_clicked(move |_| {
-        delete_pwa(&pwa_id_delete);
+        delete_pwa(&pwa_id_delete, pwa_list_box_clone.clone());
     });
     actions_box.append(&delete_btn);
 
@@ -236,7 +272,7 @@ fn edit_pwa(pwa_id: &str) {
 }
 
 /// Delete a PWA
-fn delete_pwa(pwa_id: &str) {
+fn delete_pwa(pwa_id: &str, pwa_list_box: Rc<RefCell<ListBox>>) {
     // Show confirmation dialog
     let dialog = MessageDialog::builder()
         .message_type(MessageType::Question)
@@ -256,7 +292,8 @@ fn delete_pwa(pwa_id: &str) {
                         utils::show_error_dialog(None, &format!("Failed to delete PWA: {}", e));
                     } else {
                         tracing::info!("PWA deleted successfully: {}", pwa_id_owned);
-                        // TODO: Refresh the PWA list
+                        // Update the PWA list
+                        update_pwa_list(&pwa_list_box);
                     }
                 }
                 Err(e) => {
@@ -272,7 +309,7 @@ fn delete_pwa(pwa_id: &str) {
 }
 
 /// Create Add PWA page
-fn create_add_pwa_page() -> Result<gtk::Box> {
+fn create_add_pwa_page(pwa_list_box: Rc<RefCell<ListBox>>) -> Result<gtk::Box> {
     let container = Box::new(Orientation::Vertical, 12);
     container.set_margin_top(12);
     container.set_margin_bottom(12);
@@ -367,45 +404,62 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
             return;
         }
         
-        // Try to fetch manifest
+        // Show loading state
+        auto_detect_btn_for_closure.set_sensitive(false);
+        auto_detect_btn_for_closure.set_label("Loading...");
+        
+        // Use timeout to simulate async operation without Tokio
         let url_clone = url.clone();
         let name_entry_clone2 = name_entry_clone.clone();
         let width_spin_clone2 = width_spin_clone.clone();
         let height_spin_clone2 = height_spin_clone.clone();
         let display_combo_clone2 = display_combo_clone.clone();
-        let auto_detect_btn_for_async = auto_detect_btn_for_closure.clone();
+        let auto_detect_btn_for_timeout = auto_detect_btn_for_closure.clone();
         
-        // Show loading state
-        auto_detect_btn_for_closure.set_sensitive(false);
-        auto_detect_btn_for_closure.set_label("Loading...");
-        
-        glib::MainContext::default().spawn_local(async move {
-            match pwa::fetch_manifest(&url_clone).await {
-                Ok(manifest) => {
-                    // Update form with manifest data
-                    if let Some(name) = manifest.name {
-                        name_entry_clone2.set_text(&name);
-                    }
-                    if let Some(display) = manifest.display {
-                        match display.as_str() {
-                            "standalone" => { display_combo_clone2.set_active_id(Some("standalone")); }
-                            "fullscreen" => { display_combo_clone2.set_active_id(Some("fullscreen")); }
-                            "minimal-ui" => { display_combo_clone2.set_active_id(Some("minimal-ui")); }
-                            _ => {}
+        glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+            // Fetch manifest synchronously in a blocking way
+            match std::thread::spawn({
+                let url = url_clone.clone();
+                move || {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(pwa::fetch_manifest(&url))
+                }
+            }).join() {
+                Ok(result) => {
+                    match result {
+                        Ok(manifest) => {
+                            // Update form with manifest data
+                            if let Some(name) = manifest.name {
+                                name_entry_clone2.set_text(&name);
+                            }
+                            if let Some(display) = manifest.display {
+                                match display.as_str() {
+                                    "standalone" => { display_combo_clone2.set_active_id(Some("standalone")); }
+                                    "fullscreen" => { display_combo_clone2.set_active_id(Some("fullscreen")); }
+                                    "minimal-ui" => { display_combo_clone2.set_active_id(Some("minimal-ui")); }
+                                    _ => {}
+                                }
+                            }
+                            tracing::info!("Manifest fetched successfully");
+                            utils::show_info_dialog(None, &t("success"), &t("manifest_fetched_successfully"));
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to fetch manifest: {}", e);
+                            utils::show_error_dialog(None, &format!("{}: {}", t("failed_to_fetch_manifest"), e));
                         }
                     }
-                    tracing::info!("Manifest fetched successfully");
-                    utils::show_info_dialog(None, &t("success"), &t("manifest_fetched_successfully"));
                 }
-                Err(e) => {
-                    tracing::error!("Failed to fetch manifest: {}", e);
-                    utils::show_error_dialog(None, &format!("{}: {}", t("failed_to_fetch_manifest"), e));
+                Err(_) => {
+                    tracing::error!("Thread panicked while fetching manifest");
+                    utils::show_error_dialog(None, "Failed to fetch manifest: thread panic");
                 }
             }
             
             // Restore button state
-            auto_detect_btn_for_async.set_sensitive(true);
-            auto_detect_btn_for_async.set_label(&t("auto_detect"));
+            auto_detect_btn_for_timeout.set_sensitive(true);
+            auto_detect_btn_for_timeout.set_label(&t("auto_detect"));
+            
+            glib::ControlFlow::Break
         });
     });
     btn_box.append(&auto_detect_btn);
@@ -420,6 +474,7 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
     let height_spin_clone3 = height_spin.clone();
     let display_combo_clone3 = display_combo.clone();
     let install_btn_for_closure = install_btn.clone();
+    let pwa_list_box_clone2 = pwa_list_box.clone();
     
     install_btn.connect_clicked(move |_| {
         let url = url_entry_clone2.text().to_string();
@@ -460,6 +515,8 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
                 } else {
                     tracing::info!("PWA added successfully");
                     utils::show_info_dialog(None, &t("success"), &t("pwa_installed_successfully"));
+                    // Update the PWA list
+                    update_pwa_list(&pwa_list_box_clone2);
                 }
             }
             Err(e) => {
@@ -500,7 +557,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     container.set_margin_end(12);
 
     // Title
-    let title = Label::new(Some("Settings"));
+    let title = Label::new(Some(&t("settings")));
     title.add_css_class("title-2");
     container.append(&title);
 
@@ -514,7 +571,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     let config = config::load_config().unwrap_or_default();
 
     // Language
-    let lang_label = Label::new(Some("Language:"));
+    let lang_label = Label::new(Some(&t("language")));
     lang_label.set_halign(gtk::Align::Start);
     form.attach(&lang_label, 0, 0, 1, 1);
 
@@ -525,7 +582,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     form.attach(&lang_combo, 1, 0, 2, 1);
 
     // Default engine
-    let engine_label = Label::new(Some("Browser Engine:"));
+    let engine_label = Label::new(Some(&t("browser_engine")));
     engine_label.set_halign(gtk::Align::Start);
     form.attach(&engine_label, 0, 1, 1, 1);
 
@@ -537,7 +594,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     form.attach(&engine_combo, 1, 1, 2, 1);
 
     // Hardware acceleration
-    let hw_accel_label = Label::new(Some("Hardware Acceleration:"));
+    let hw_accel_label = Label::new(Some(&t("hardware_acceleration")));
     hw_accel_label.set_halign(gtk::Align::Start);
     form.attach(&hw_accel_label, 0, 2, 1, 1);
 
@@ -546,7 +603,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     form.attach(&hw_accel_switch, 1, 2, 1, 1);
 
     // Notifications
-    let notif_label = Label::new(Some("Enable Notifications:"));
+    let notif_label = Label::new(Some(&t("enable_notifications")));
     notif_label.set_halign(gtk::Align::Start);
     form.attach(&notif_label, 0, 3, 1, 1);
 
@@ -555,14 +612,14 @@ fn create_settings_page() -> Result<gtk::Box> {
     form.attach(&notif_switch, 1, 3, 1, 1);
 
     // Theme
-    let theme_label = Label::new(Some("Theme:"));
+    let theme_label = Label::new(Some(&t("theme")));
     theme_label.set_halign(gtk::Align::Start);
     form.attach(&theme_label, 0, 4, 1, 1);
 
     let theme_combo = ComboBoxText::new();
-    theme_combo.append(Some("system"), "System Default");
-    theme_combo.append(Some("light"), "Light");
-    theme_combo.append(Some("dark"), "Dark");
+    theme_combo.append(Some("system"), &t("system_default"));
+    theme_combo.append(Some("light"), &t("light"));
+    theme_combo.append(Some("dark"), &t("dark"));
     theme_combo.set_active_id(Some(&config.theme));
     form.attach(&theme_combo, 1, 4, 2, 1);
 
@@ -572,7 +629,7 @@ fn create_settings_page() -> Result<gtk::Box> {
     container.append(&Separator::new(Orientation::Horizontal));
 
     // Save button
-    let save_btn = Button::with_label("Save Settings");
+    let save_btn = Button::with_label(&t("save_settings"));
     save_btn.add_css_class("suggested-action");
     save_btn.set_halign(gtk::Align::End);
     
@@ -605,6 +662,8 @@ fn create_settings_page() -> Result<gtk::Box> {
             utils::show_error_dialog(None, &format!("Failed to save settings: {}", e));
         } else {
             tracing::info!("Settings saved successfully");
+            // Apply theme
+            apply_theme(&config.theme);
         }
     });
     
@@ -669,4 +728,24 @@ fn create_about_page() -> gtk::Box {
     container.append(&copyright);
 
     container
+}
+
+/// Apply theme to the application
+fn apply_theme(theme: &str) {
+    let settings = gtk::Settings::default();
+    if let Some(settings) = settings {
+        match theme {
+            "dark" => {
+                settings.set_gtk_application_prefer_dark_theme(true);
+            }
+            "light" => {
+                settings.set_gtk_application_prefer_dark_theme(false);
+            }
+            "system" => {
+                // Use system default
+                settings.set_gtk_application_prefer_dark_theme(false);
+            }
+            _ => {}
+        }
+    }
 }
