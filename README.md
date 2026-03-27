@@ -349,9 +349,26 @@ sudo pacman -S base-devel gtk4 webkitgtk-6.0
 # 4. Compilar
 cargo build --release
 
-# 5. Instalar
+# 5. Ejecutar directamente (sin instalar)
+./target/release/pwasforalllinux
+
+# 6. O instalar en el sistema
 sudo ./scripts/install.sh --build
 ```
+
+### Ejecutar sin Instalar
+
+Para probar la aplicación sin instalarla en el sistema:
+
+```bash
+# Compilar en modo debug
+cargo build
+
+# Ejecutar
+./target/debug/pwasforalllinux
+```
+
+> 💡 **Nota:** Al ejecutar sin instalar, las PWAs se guardarán en `~/.local/share/pwasforalllinux/` en lugar de `/opt/pwasforalllinux/`.
 
 ### Notas Técnicas
 
@@ -365,6 +382,9 @@ La migración de WebKit2GTK (GTK3) a WebKit6 (GTK4) garantiza compatibilidad tot
 ### Características Implementadas
 
 - ✅ Sistema de internacionalización (i18n) con soporte para Español e Inglés
+- ✅ Cambio de idioma en tiempo real (se aplica al guardar configuración)
+- ✅ Cambio de tema en tiempo real (Light/Dark/System)
+- ✅ Lista de PWAs se actualiza automáticamente después de instalar/eliminar
 - ✅ Auto-detección de PWAs con manejo robusto de errores
 - ✅ Validación post-instalación de PWAs
 - ✅ Mensajes de error claros y estados de carga
