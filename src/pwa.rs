@@ -170,8 +170,16 @@ impl PwaManager {
         self.pwas.iter().find(|p| p.id == id)
     }
 
-    /// Add a new PWA
+    /// Add a new PWA with validation
     pub fn add(&mut self, mut pwa: Pwa) -> Result<()> {
+        // Validate PWA data
+        self.validate_pwa(&pwa)?;
+
+        // Check for duplicates
+        if self.pwas.iter().any(|p| p.url == pwa.url) {
+            return Err(anyhow::anyhow!("A PWA with this URL already exists"));
+        }
+
         // Create profile directory
         let profile_path = pwa.profile_path()?;
         fs::create_dir_all(&profile_path)
@@ -180,13 +188,89 @@ impl PwaManager {
         // Create .desktop file
         self.create_desktop_file(&pwa)?;
 
+        // Verify .desktop file was created
+        let desktop_path = pwa.desktop_file_path()?;
+        if !desktop_path.exists() {
+            return Err(anyhow::anyhow!("Failed to create .desktop file"));
+        }
+
         // Add to list
         pwa.created_at = Utc::now();
+        let pwa_clone = pwa.clone();
         self.pwas.push(pwa);
 
         // Save
         self.save()?;
 
+        // Verify installation
+        self.verify_installation(&pwa_clone)?;
+
+        Ok(())
+    }
+
+    /// Validate PWA data
+    fn validate_pwa(&self, pwa: &Pwa) -> Result<()> {
+        // Validate name
+        if pwa.name.trim().is_empty() {
+            return Err(anyhow::anyhow!("PWA name cannot be empty"));
+        }
+
+        // Validate URL
+        if pwa.url.trim().is_empty() {
+            return Err(anyhow::anyhow!("PWA URL cannot be empty"));
+        }
+
+        // Validate URL format
+        if !pwa.url.starts_with("http://") && !pwa.url.starts_with("https://") {
+            return Err(anyhow::anyhow!("PWA URL must start with http:// or https://"));
+        }
+
+        // Validate dimensions
+        if pwa.width < 100 || pwa.width > 7680 {
+            return Err(anyhow::anyhow!("Window width must be between 100 and 7680"));
+        }
+
+        if pwa.height < 100 || pwa.height > 4320 {
+            return Err(anyhow::anyhow!("Window height must be between 100 and 4320"));
+        }
+
+        // Validate display mode
+        let valid_modes = ["standalone", "minimal-ui", "fullscreen"];
+        if !valid_modes.contains(&pwa.display_mode.as_str()) {
+            return Err(anyhow::anyhow!("Invalid display mode: {}", pwa.display_mode));
+        }
+
+        Ok(())
+    }
+
+    /// Verify PWA installation
+    fn verify_installation(&self, pwa: &Pwa) -> Result<()> {
+        // Check .desktop file exists
+        let desktop_path = pwa.desktop_file_path()?;
+        if !desktop_path.exists() {
+            return Err(anyhow::anyhow!(".desktop file was not created"));
+        }
+
+        // Check .desktop file is readable
+        let content = fs::read_to_string(&desktop_path)
+            .context("Failed to read .desktop file")?;
+
+        // Verify .desktop file has required fields
+        if !content.contains("Exec=pwa-launcher") {
+            return Err(anyhow::anyhow!(".desktop file is missing Exec field"));
+        }
+
+        if !content.contains("Name=") {
+            return Err(anyhow::anyhow!(".desktop file is missing Name field"));
+        }
+
+        // Check profile directory exists
+        let profile_path = pwa.profile_path()?;
+        if !profile_path.exists() {
+            return Err(anyhow::anyhow!("Profile directory was not created"));
+        }
+
+        tracing::info!("PWA installation verified successfully: {}", pwa.name);
         Ok(())
     }
 
@@ -298,31 +382,153 @@ impl Default for PwaManager {
     }
 }
 
-/// Fetch web app manifest from URL
+/// Fetch web app manifest from URL with improved error handling
 pub async fn fetch_manifest(url: &str) -> Result<WebAppManifest> {
     let client = reqwest::Client::builder()
         .user_agent("PWAsForAllLinux/1.0")
+        .timeout(std::time::Duration::from_secs(10))
         .build()?;
 
-    let response = client.get(url).send().await?;
-    let html = response.text().await?;
+    // Fetch HTML with error handling
+    let response = match client.get(url).send().await {
+        Ok(resp) => resp,
+        Err(e) => {
+            tracing::error!("Network error fetching URL {}: {}", url, e);
+            return Err(anyhow::anyhow!("Failed to fetch URL: {}", e));
+        }
+    };
 
-    // Find manifest link
-    let manifest_url = extract_manifest_url(&html, url)?;
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!("HTTP error: {}", response.status()));
+    }
 
-    // Fetch manifest
-    let manifest_response = client.get(&manifest_url).send().await?;
-    let manifest: WebAppManifest = manifest_response.json().await?;
+    let html = match response.text().await {
+        Ok(text) => text,
+        Err(e) => {
+            tracing::error!("Failed to read response text: {}", e);
+            return Err(anyhow::anyhow!("Failed to read response: {}", e));
+        }
+    };
 
-    Ok(manifest)
+    // Try to find manifest URL
+    match extract_manifest_url(&html, url) {
+        Ok(manifest_url) => {
+            // Fetch manifest with error handling
+            let manifest_response = match client.get(&manifest_url).send().await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    tracing::warn!("Failed to fetch manifest from {}: {}", manifest_url, e);
+                    return Ok(create_fallback_manifest(url, &html));
+                }
+            };
+
+            if !manifest_response.status().is_success() {
+                tracing::warn!("Manifest request failed with status: {}", manifest_response.status());
+                return Ok(create_fallback_manifest(url, &html));
+            }
+
+            match manifest_response.json::<WebAppManifest>().await {
+                Ok(manifest) => Ok(manifest),
+                Err(e) => {
+                    tracing::warn!("Failed to parse manifest JSON: {}", e);
+                    Ok(create_fallback_manifest(url, &html))
+                }
+            }
+        }
+        Err(e) => {
+            tracing::info!("No manifest found in HTML: {}", e);
+            Ok(create_fallback_manifest(url, &html))
+        }
+    }
 }
 
-/// Extract manifest URL from HTML
+/// Create fallback manifest from HTML when manifest is not available
+fn create_fallback_manifest(url: &str, html: &str) -> WebAppManifest {
+    let mut manifest = WebAppManifest {
+        name: None,
+        short_name: None,
+        description: None,
+        start_url: Some(url.to_string()),
+        scope: None,
+        display: Some("standalone".to_string()),
+        orientation: None,
+        theme_color: None,
+        background_color: None,
+        icons: None,
+        categories: None,
+    };
+
+    // Try to extract title from HTML
+    if let Some(title_match) = regex::Regex::new(r#"<title[^>]*>([^<]+)</title>"#)
+        .ok()
+        .and_then(|re| re.captures(html))
+    {
+        manifest.name = Some(title_match.get(1).unwrap().as_str().trim().to_string());
+    }
+
+    // Try to extract description from meta tag
+    if let Some(desc_match) = regex::Regex::new(r#"<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']"#)
+        .ok()
+        .and_then(|re| re.captures(html))
+    {
+        manifest.description = Some(desc_match.get(1).unwrap().as_str().trim().to_string());
+    }
+
+    // Try to extract theme color from meta tag
+    if let Some(color_match) = regex::Regex::new(r#"<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']"#)
+        .ok()
+        .and_then(|re| re.captures(html))
+    {
+        manifest.theme_color = Some(color_match.get(1).unwrap().as_str().trim().to_string());
+    }
+
+    // Try to find icon from link rel="icon"
+    if let Some(icon_match) = regex::Regex::new(r#"<link[^>]*rel=["']icon["'][^>]*href=["']([^"']+)["']"#)
+        .ok()
+        .and_then(|re| re.captures(html))
+    {
+        let icon_href = icon_match.get(1).unwrap().as_str();
+        let icon_url = if icon_href.starts_with("http") {
+            icon_href.to_string()
+        } else if let Ok(base) = url::Url::parse(url) {
+            base.join(icon_href).map(|u| u.to_string()).unwrap_or_else(|_| icon_href.to_string())
+        } else {
+            icon_href.to_string()
+        };
+
+        manifest.icons = Some(vec![ManifestIcon {
+            src: icon_url,
+            sizes: None,
+            r#type: None,
+            purpose: Some("any".to_string()),
+        }]);
+    }
+
+    manifest
+}
+
+/// Extract manifest URL from HTML with improved parsing
 fn extract_manifest_url(html: &str, base_url: &str) -> Result<String> {
     // Look for <link rel="manifest" href="...">
     let re = regex::Regex::new(r#"<link[^>]*rel=["']manifest["'][^>]*href=["']([^"']+)["']"#)?;
     
     if let Some(caps) = re.captures(html) {
+        let href = caps.get(1).unwrap().as_str();
+        
+        // Resolve relative URL
+        if href.starts_with("http") {
+            return Ok(href.to_string());
+        } else {
+            let base = url::Url::parse(base_url)?;
+            let resolved = base.join(href)?;
+            return Ok(resolved.to_string());
+        }
+    }
+
+    // Also look for <link href="..." rel="manifest">
+    let re2 = regex::Regex::new(r#"<link[^>]*href=["']([^"']+)["'][^>]*rel=["']manifest["']"#)?;
+    
+    if let Some(caps) = re2.captures(html) {
         let href = caps.get(1).unwrap().as_str();
         
         // Resolve relative URL

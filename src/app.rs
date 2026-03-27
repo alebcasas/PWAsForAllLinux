@@ -13,6 +13,7 @@ use gtk::gdk::Texture;
 use gtk::gio::File as GioFile;
 
 use crate::config;
+use crate::i18n::t;
 use crate::pwa::{self, Pwa, PwaManager};
 use crate::utils;
 
@@ -45,19 +46,19 @@ pub fn build_ui(app: &Application) -> Result<()> {
 
     // PWAs page
     let pwas_page = create_pwas_page()?;
-    stack.add_titled(&pwas_page, Some("pwas"), "My PWAs");
+    stack.add_titled(&pwas_page, Some("pwas"), &t("my_pwas"));
 
     // Add PWA page
     let add_page = create_add_pwa_page()?;
-    stack.add_titled(&add_page, Some("add"), "Add PWA");
+    stack.add_titled(&add_page, Some("add"), &t("add_pwa"));
 
     // Settings page
     let settings_page = create_settings_page()?;
-    stack.add_titled(&settings_page, Some("settings"), "Settings");
+    stack.add_titled(&settings_page, Some("settings"), &t("settings"));
 
     // About page
     let about_page = create_about_page();
-    stack.add_titled(&about_page, Some("about"), "About");
+    stack.add_titled(&about_page, Some("about"), &t("about"));
 
     // Pack widgets
     main_box.append(&sidebar);
@@ -79,13 +80,13 @@ fn create_pwas_page() -> Result<gtk::Box> {
 
     // Header
     let header_box = Box::new(Orientation::Horizontal, 12);
-    let title = Label::new(Some("Installed Progressive Web Apps"));
+    let title = Label::new(Some(&t("installed_pwas")));
     title.add_css_class("title-2");
     header_box.append(&title);
 
     // Refresh button
     let refresh_btn = Button::from_icon_name("view-refresh-symbolic");
-    refresh_btn.set_tooltip_text(Some("Refresh list"));
+    refresh_btn.set_tooltip_text(Some(&t("refresh_list")));
     header_box.append(&refresh_btn);
 
     container.append(&header_box);
@@ -103,7 +104,7 @@ fn create_pwas_page() -> Result<gtk::Box> {
     let pwas = pwa_manager.get_all();
 
     if pwas.is_empty() {
-        let empty_label = Label::new(Some("No PWAs installed yet.\nClick 'Add PWA' to install your first web app!"));
+        let empty_label = Label::new(Some(&t("no_pwas_installed")));
         empty_label.add_css_class("dim-label");
         list_box.append(&empty_label);
     } else {
@@ -168,7 +169,7 @@ fn create_pwa_row(pwa: &Pwa) -> Result<ListBoxRow> {
     let actions_box = Box::new(Orientation::Horizontal, 6);
 
     // Launch button
-    let launch_btn = Button::with_label("Launch");
+    let launch_btn = Button::with_label(&t("launch"));
     launch_btn.add_css_class("suggested-action");
     launch_btn.add_css_class("pill");
     let pwa_id_launch = pwa.id.clone();
@@ -179,7 +180,7 @@ fn create_pwa_row(pwa: &Pwa) -> Result<ListBoxRow> {
 
     // Edit button
     let edit_btn = Button::from_icon_name("document-edit-symbolic");
-    edit_btn.set_tooltip_text(Some("Edit PWA"));
+    edit_btn.set_tooltip_text(Some(&t("edit_pwa")));
     let pwa_id_edit = pwa.id.clone();
     edit_btn.connect_clicked(move |_| {
         edit_pwa(&pwa_id_edit);
@@ -189,7 +190,7 @@ fn create_pwa_row(pwa: &Pwa) -> Result<ListBoxRow> {
     // Delete button
     let delete_btn = Button::from_icon_name("user-trash-symbolic");
     delete_btn.add_css_class("destructive-action");
-    delete_btn.set_tooltip_text(Some("Delete PWA"));
+    delete_btn.set_tooltip_text(Some(&t("delete_pwa")));
     let pwa_id_delete = pwa.id.clone();
     delete_btn.connect_clicked(move |_| {
         delete_pwa(&pwa_id_delete);
@@ -345,17 +346,24 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
     btn_box.set_halign(gtk::Align::End);
     btn_box.set_margin_top(12);
 
-    let auto_detect_btn = Button::with_label("Auto-detect from URL");
+    let auto_detect_btn = Button::with_label(&t("auto_detect"));
     let url_entry_clone = url_entry.clone();
     let name_entry_clone = name_entry.clone();
     let width_spin_clone = width_spin.clone();
     let height_spin_clone = height_spin.clone();
     let display_combo_clone = display_combo.clone();
+    let auto_detect_btn_for_closure = auto_detect_btn.clone();
     
     auto_detect_btn.connect_clicked(move |_| {
         let url = url_entry_clone.text().to_string();
         if url.is_empty() {
-            utils::show_error_dialog(None, "Please enter a URL first");
+            utils::show_error_dialog(None, &t("please_enter_url_first"));
+            return;
+        }
+        
+        // Validate URL format
+        if !url.starts_with("http://") && !url.starts_with("https://") {
+            utils::show_error_dialog(None, "URL must start with http:// or https://");
             return;
         }
         
@@ -365,6 +373,11 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
         let width_spin_clone2 = width_spin_clone.clone();
         let height_spin_clone2 = height_spin_clone.clone();
         let display_combo_clone2 = display_combo_clone.clone();
+        let auto_detect_btn_for_async = auto_detect_btn_for_closure.clone();
+        
+        // Show loading state
+        auto_detect_btn_for_closure.set_sensitive(false);
+        auto_detect_btn_for_closure.set_label("Loading...");
         
         glib::MainContext::default().spawn_local(async move {
             match pwa::fetch_manifest(&url_clone).await {
@@ -382,17 +395,22 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
                         }
                     }
                     tracing::info!("Manifest fetched successfully");
+                    utils::show_info_dialog(None, &t("success"), &t("manifest_fetched_successfully"));
                 }
                 Err(e) => {
                     tracing::error!("Failed to fetch manifest: {}", e);
-                    utils::show_error_dialog(None, &format!("Failed to fetch manifest: {}", e));
+                    utils::show_error_dialog(None, &format!("{}: {}", t("failed_to_fetch_manifest"), e));
                 }
             }
+            
+            // Restore button state
+            auto_detect_btn_for_async.set_sensitive(true);
+            auto_detect_btn_for_async.set_label(&t("auto_detect"));
         });
     });
     btn_box.append(&auto_detect_btn);
 
-    let install_btn = Button::with_label("Install PWA");
+    let install_btn = Button::with_label(&t("install_pwa"));
     install_btn.add_css_class("suggested-action");
     install_btn.add_css_class("pill");
     
@@ -401,18 +419,19 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
     let width_spin_clone3 = width_spin.clone();
     let height_spin_clone3 = height_spin.clone();
     let display_combo_clone3 = display_combo.clone();
+    let install_btn_for_closure = install_btn.clone();
     
     install_btn.connect_clicked(move |_| {
         let url = url_entry_clone2.text().to_string();
         let name = name_entry_clone3.text().to_string();
         
         if url.is_empty() {
-            utils::show_error_dialog(None, "Please enter a URL");
+            utils::show_error_dialog(None, &t("please_enter_url"));
             return;
         }
         
         if name.is_empty() {
-            utils::show_error_dialog(None, "Please enter a name for the PWA");
+            utils::show_error_dialog(None, &t("please_enter_name"));
             return;
         }
         
@@ -421,6 +440,10 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
         let display_mode = display_combo_clone3.active_id()
             .map(|s| s.to_string())
             .unwrap_or_else(|| "standalone".to_string());
+        
+        // Show loading state
+        install_btn_for_closure.set_sensitive(false);
+        install_btn_for_closure.set_label("Installing...");
         
         // Create PWA
         let mut pwa = pwa::Pwa::new(name, url);
@@ -433,17 +456,21 @@ fn create_add_pwa_page() -> Result<gtk::Box> {
             Ok(mut manager) => {
                 if let Err(e) = manager.add(pwa) {
                     tracing::error!("Failed to add PWA: {}", e);
-                    utils::show_error_dialog(None, &format!("Failed to add PWA: {}", e));
+                    utils::show_error_dialog(None, &format!("{}: {}", t("failed_to_add_pwa"), e));
                 } else {
                     tracing::info!("PWA added successfully");
-                    utils::show_info_dialog(None, "Success", "PWA installed successfully!");
+                    utils::show_info_dialog(None, &t("success"), &t("pwa_installed_successfully"));
                 }
             }
             Err(e) => {
                 tracing::error!("Failed to load PWA manager: {}", e);
-                utils::show_error_dialog(None, &format!("Failed to load PWA manager: {}", e));
+                utils::show_error_dialog(None, &format!("{}: {}", t("failed_to_load_pwa_manager"), e));
             }
         }
+        
+        // Restore button state
+        install_btn_for_closure.set_sensitive(true);
+        install_btn_for_closure.set_label(&t("install_pwa"));
     });
     btn_box.append(&install_btn);
 
