@@ -362,6 +362,16 @@ Este proyecto utiliza:
 
 La migración de WebKit2GTK (GTK3) a WebKit6 (GTK4) garantiza compatibilidad total con las últimas versiones de GTK y mejor rendimiento.
 
+### Características Implementadas
+
+- ✅ Sistema de internacionalización (i18n) con soporte para Español e Inglés
+- ✅ Auto-detección de PWAs con manejo robusto de errores
+- ✅ Validación post-instalación de PWAs
+- ✅ Mensajes de error claros y estados de carga
+- ✅ Logging detallado para debugging
+- ✅ Validación de URLs y nombres antes de instalar
+- ✅ Detección de PWAs duplicadas
+
 ---
 
 ## 🤝 Contribuir
